@@ -1,0 +1,22 @@
+- generic [ref=e5]:
+  - generic [ref=e7]: Welcome
+  - tablist [ref=e9]:
+    - list [ref=e12]:
+      - tab "Login" [selected] [ref=e13] [cursor=pointer]:
+        - generic [ref=e14]: Login
+      - tab "Register" [ref=e15] [cursor=pointer]:
+        - generic [ref=e16]: Register
+      - listitem [ref=e17]
+    - tabpanel "Login" [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: Email
+          - textbox "Email" [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]: Password
+          - generic [ref=e26]:
+            - textbox [ref=e27]
+            - img [ref=e28]
+            - generic: Enter a password
+        - button "Sign in" [ref=e30] [cursor=pointer]:
+          - generic [ref=e31]: Sign in

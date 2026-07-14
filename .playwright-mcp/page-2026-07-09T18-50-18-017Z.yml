@@ -1,0 +1,23 @@
+- generic [ref=e33]:
+  - generic [ref=e36]:
+    - generic [ref=e37]: demo@demo.com
+    - button "Log out" [ref=e38] [cursor=pointer]:
+      - generic [ref=e39]: Log out
+  - generic [ref=e41]:
+    - heading "Latest meetings" [level=3] [ref=e42]
+    - generic [ref=e43]:
+      - generic [ref=e45]:
+        - generic [ref=e47]: Retrospective
+        - generic [ref=e48]:
+          - generic [ref=e51]: 13 июл. 2026 г., 16:00
+          - paragraph [ref=e52]: Sprint retro discussion
+      - generic [ref=e54]:
+        - generic [ref=e56]: 1:1 with Manager
+        - generic [ref=e57]:
+          - generic [ref=e60]: 12 июл. 2026 г., 09:00
+          - paragraph [ref=e61]: Weekly sync
+      - generic [ref=e63]:
+        - generic [ref=e65]: Design Review
+        - generic [ref=e66]:
+          - generic [ref=e69]: 11 июл. 2026 г., 14:30
+          - paragraph [ref=e70]: Review new dashboard mockups

@@ -1,0 +1,13 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+$status = (require __DIR__.'/bootstrap/app.php')
+    ->make(\Laravel\Lumen\Console\Kernel::class)
+    ->handle(
+        $input = new \Symfony\Component\Console\Input\ArgvInput(),
+        new \Symfony\Component\Console\Output\ConsoleOutput()
+    );
+
+exit($status);

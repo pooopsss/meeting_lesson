@@ -1,0 +1,11 @@
+node_modules
+vendor
+dist
+*.log
+docker-compose.yml
+Dockerfile
+docker-entrypoint.sh
+*.lock
+*.md
+.env
+.env.example

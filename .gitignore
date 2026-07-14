@@ -1,0 +1,28 @@
+# Environment
+.env
+!.env.example
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+backend/storage/logs/*.log
+
+# Cache
+backend/storage/framework/cache/*
+backend/storage/framework/views/*
