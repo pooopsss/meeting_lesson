@@ -28,6 +28,7 @@ const label = ref("");
 const inlineError = ref("");
 const uploading = ref(false);
 const progress = ref(0);
+const clearing = ref(false);
 
 const fileUploadRef = ref(null);
 
@@ -91,11 +92,17 @@ function onSelect(event) {
 }
 
 function onClear() {
-  selectedFile.value = null;
-  label.value = "";
-  inlineError.value = "";
-  progress.value = 0;
-  fileUploadRef.value?.clear?.();
+  if (clearing.value) return;
+  clearing.value = true;
+  try {
+    selectedFile.value = null;
+    label.value = "";
+    inlineError.value = "";
+    progress.value = 0;
+    fileUploadRef.value?.clear?.();
+  } finally {
+    clearing.value = false;
+  }
 }
 
 function onCancel() {
