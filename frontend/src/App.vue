@@ -2,6 +2,7 @@
 import Card from "primevue/card";
 import Button from "primevue/button";
 import Toast from "primevue/toast";
+import ConfirmDialog from "primevue/confirmdialog";
 import AuthForm from "./components/AuthForm.vue";
 import MeetingsList from "./components/MeetingsList.vue";
 import { auth, clearSession, isAuthenticated } from "./store/auth.js";
@@ -10,6 +11,7 @@ import { auth, clearSession, isAuthenticated } from "./store/auth.js";
 <template>
   <div class="app-container">
     <Toast position="top-right" />
+    <ConfirmDialog />
     <AuthForm v-if="!isAuthenticated()" />
 
     <Card v-else class="dashboard-card">

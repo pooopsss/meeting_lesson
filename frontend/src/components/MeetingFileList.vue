@@ -1,19 +1,37 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Button from "primevue/button";
 import DataView from "primevue/dataview";
 import Message from "primevue/message";
 import ProgressSpinner from "primevue/progressspinner";
-import { downloadMeetingFile, listMeetingFiles } from "../api/files.js";
+import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
+import {
+  deleteMeetingFile,
+  downloadMeetingFile,
+  fetchMeetingFileBlob,
+  listMeetingFiles,
+} from "../api/files.js";
+import { auth } from "../store/auth.js";
 
 const props = defineProps({
   meetingId: { type: Number, required: true },
 });
 
+const emit = defineEmits(["changed"]);
+
+const confirm = useConfirm();
+const toast = useToast();
+
 const files = ref([]);
 const loading = ref(false);
 const errorMessage = ref("");
 const downloadingId = ref(null);
+const deletingId = ref(null);
+const mediaUrls = ref({});
+const mediaLoading = ref({});
+
+const currentUserId = computed(() => auth.user?.id ?? null);
 
 async function load() {
   loading.value = true;
@@ -41,6 +59,86 @@ async function onDownload(file) {
   } finally {
     downloadingId.value = null;
   }
+}
+
+function onDelete(file) {
+  confirm.require({
+    message: `Удалить файл «${file.original_name}»?`,
+    header: "Удаление файла",
+    icon: "pi pi-exclamation-triangle",
+    acceptLabel: "Удалить",
+    rejectLabel: "Отмена",
+    acceptProps: { severity: "danger" },
+    accept: async () => {
+      deletingId.value = file.id;
+      try {
+        await deleteMeetingFile(props.meetingId, file.id);
+        toast.add({
+          severity: "success",
+          summary: "Файл удалён",
+          detail: file.original_name,
+          life: 3000,
+        });
+        files.value = files.value.filter((f) => f.id !== file.id);
+        revokeMediaUrl(file.id);
+        emit("changed");
+      } catch (err) {
+        const msg =
+          (err.errors && err.errors.file && err.errors.file[0]) ||
+          err.message ||
+          "Не удалось удалить файл";
+        toast.add({
+          severity: "error",
+          summary: "Ошибка удаления",
+          detail: msg,
+          life: 4000,
+        });
+      } finally {
+        deletingId.value = null;
+      }
+    },
+  });
+}
+
+async function toggleMedia(file) {
+  if (mediaUrls.value[file.id]) {
+    revokeMediaUrl(file.id);
+    return;
+  }
+  if (mediaLoading.value[file.id]) return;
+  mediaLoading.value = { ...mediaLoading.value, [file.id]: true };
+  try {
+    const blob = await fetchMeetingFileBlob(props.meetingId, file.id);
+    const url = URL.createObjectURL(blob);
+    mediaUrls.value = { ...mediaUrls.value, [file.id]: url };
+  } catch (err) {
+    toast.add({
+      severity: "error",
+      summary: "Не удалось загрузить превью",
+      detail: err.message || "",
+      life: 4000,
+    });
+  } finally {
+    mediaLoading.value = { ...mediaLoading.value, [file.id]: false };
+  }
+}
+
+function revokeMediaUrl(fileId) {
+  const url = mediaUrls.value[fileId];
+  if (url) {
+    URL.revokeObjectURL(url);
+    const next = { ...mediaUrls.value };
+    delete next[fileId];
+    mediaUrls.value = next;
+  }
+}
+
+function isAudio(mime) {
+  return typeof mime === "string" && mime.startsWith("audio/");
+}
+
+function isVideo(mime) {
+  return typeof mime === "string" && mime.startsWith("video/");
 }
 
 function formatSize(bytes) {
@@ -79,8 +177,19 @@ function mimeIcon(mime) {
   return "pi pi-file";
 }
 
+watch(
+  () => props.meetingId,
+  () => {
+    Object.keys(mediaUrls.value).forEach(revokeMediaUrl);
+    load();
+  },
+);
+
+onBeforeUnmount(() => {
+  Object.keys(mediaUrls.value).forEach(revokeMediaUrl);
+});
+
 onMounted(load);
-watch(() => props.meetingId, load);
 </script>
 
 <template>
@@ -106,29 +215,67 @@ watch(() => props.meetingId, load);
 
     <DataView v-else :value="files" data-key="id" class="files-list">
       <template #list="slotProps">
-        <div v-for="file in slotProps.items" :key="file.id" class="file-row">
-          <i :class="mimeIcon(file.mime_type)" class="file-icon"></i>
-          <div class="file-meta">
-            <div class="file-name" :title="file.original_name">
-              {{ file.original_name }}
+        <div v-for="file in slotProps.items" :key="file.id" class="file-block">
+          <div class="file-row">
+            <i :class="mimeIcon(file.mime_type)" class="file-icon"></i>
+            <div class="file-meta">
+              <div class="file-name" :title="file.original_name">
+                {{ file.original_name }}
+              </div>
+              <div class="file-sub">
+                <span>{{ formatSize(file.size) }}</span>
+                <span>·</span>
+                <span>user #{{ file.user_id }}</span>
+                <span>·</span>
+                <span>{{ formatDate(file.created_at) }}</span>
+              </div>
+              <div v-if="file.label" class="file-label">{{ file.label }}</div>
             </div>
-            <div class="file-sub">
-              <span>{{ formatSize(file.size) }}</span>
-              <span v-if="file.user_id">·</span>
-              <span v-if="file.user_id">user #{{ file.user_id }}</span>
-              <span>·</span>
-              <span>{{ formatDate(file.created_at) }}</span>
+            <div class="file-actions">
+              <Button
+                v-if="isAudio(file.mime_type) || isVideo(file.mime_type)"
+                :icon="mediaUrls[file.id] ? 'pi pi-eye-slash' : 'pi pi-play'"
+                :label="mediaUrls[file.id] ? 'Скрыть' : 'Превью'"
+                size="small"
+                severity="secondary"
+                :loading="mediaLoading[file.id]"
+                @click="toggleMedia(file)"
+              />
+              <Button
+                icon="pi pi-download"
+                label="Скачать"
+                size="small"
+                severity="secondary"
+                :loading="downloadingId === file.id"
+                @click="onDownload(file)"
+              />
+              <Button
+                v-if="currentUserId !== null && currentUserId === file.user_id"
+                icon="pi pi-trash"
+                label="Удалить"
+                size="small"
+                severity="danger"
+                :loading="deletingId === file.id"
+                @click="onDelete(file)"
+              />
             </div>
-            <div v-if="file.label" class="file-label">{{ file.label }}</div>
           </div>
-          <Button
-            icon="pi pi-download"
-            label="Скачать"
-            size="small"
-            severity="secondary"
-            :loading="downloadingId === file.id"
-            @click="onDownload(file)"
-          />
+          <div v-if="mediaUrls[file.id]" class="file-media">
+            <audio
+              v-if="isAudio(file.mime_type)"
+              controls
+              preload="none"
+              :src="mediaUrls[file.id]"
+              class="media-element"
+            />
+            <video
+              v-else-if="isVideo(file.mime_type)"
+              controls
+              preload="metadata"
+              :src="mediaUrls[file.id]"
+              class="media-element"
+            />
+          </div>
         </div>
       </template>
     </DataView>
@@ -180,16 +327,19 @@ watch(() => props.meetingId, load);
   overflow: hidden;
 }
 
+.file-block {
+  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.file-block:last-child {
+  border-bottom: none;
+}
+
 .file-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
-}
-
-.file-row:last-child {
-  border-bottom: none;
 }
 
 .file-icon {
@@ -225,5 +375,23 @@ watch(() => props.meetingId, load);
   color: var(--p-text-muted-color, #64748b);
   font-style: italic;
   margin-top: 0.1rem;
+}
+
+.file-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.file-media {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.media-element {
+  width: 100%;
+  max-width: 100%;
+  display: block;
 }
 </style>
