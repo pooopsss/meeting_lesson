@@ -127,6 +127,41 @@ export async function downloadMeetingFile(meetingId, fileId) {
   return { filename, size: blob.size };
 }
 
+export async function fetchMeetingFileBlob(meetingId, fileId) {
+  const response = await fetch(
+    `${API_URL}/meetings/${meetingId}/files/${fileId}`,
+    {
+      headers: {
+        Accept: "*/*",
+        Authorization: auth.token ? `Bearer ${auth.token}` : "",
+      },
+    },
+  );
+
+  if (response.status === 401) {
+    clearSession();
+  }
+
+  if (!response.ok) {
+    let message = "Failed to load media";
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch (_) {
+      // not JSON
+    }
+    throw { status: response.status, message };
+  }
+
+  return response.blob();
+}
+
+export async function deleteMeetingFile(meetingId, fileId) {
+  return authedRequest(`/meetings/${meetingId}/files/${fileId}`, {
+    method: "DELETE",
+  });
+}
+
 function parseFilename(disposition) {
   if (!disposition) return null;
   const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
