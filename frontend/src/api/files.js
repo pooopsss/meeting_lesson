@@ -36,6 +36,62 @@ export function listMeetingFiles(meetingId) {
   return authedRequest(`/meetings/${meetingId}/files`);
 }
 
+export function uploadMeetingFile(meetingId, file, label, { onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const form = new FormData();
+    form.append("file", file);
+    if (label && label.trim()) {
+      form.append("label", label.trim());
+    }
+
+    xhr.open("POST", `${API_URL}/meetings/${meetingId}/files`);
+    xhr.setRequestHeader("Accept", "application/json");
+    if (auth.token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${auth.token}`);
+    }
+
+    if (typeof onProgress === "function") {
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+    }
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status === 401) {
+        clearSession();
+      }
+      let data = {};
+      try {
+        data = JSON.parse(xhr.responseText || "{}");
+      } catch (_) {
+        // not JSON
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+      } else {
+        reject({
+          status: xhr.status,
+          message: data.message || "Upload failed",
+          errors: data.errors || null,
+        });
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject({ status: 0, message: "Network error" });
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject({ status: 0, message: "aborted" });
+    });
+
+    xhr.send(form);
+  });
+}
+
 export async function downloadMeetingFile(meetingId, fileId) {
   const response = await fetch(
     `${API_URL}/meetings/${meetingId}/files/${fileId}`,
