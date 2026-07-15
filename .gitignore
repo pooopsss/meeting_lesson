@@ -15,6 +15,9 @@ frontend/dist/
 *.swp
 *.swo
 
+# Claude
+.claude/history/
+
 # OS
 .DS_Store
 Thumbs.db
