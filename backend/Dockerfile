@@ -16,6 +16,12 @@ COPY . .
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+RUN { \
+    echo 'upload_max_filesize=220M'; \
+    echo 'post_max_size=220M'; \
+    echo 'memory_limit=512M'; \
+} > /usr/local/etc/php/conf.d/zz-meeting-files.ini
+
 EXPOSE 9000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
