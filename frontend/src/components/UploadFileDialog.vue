@@ -170,7 +170,6 @@ async function onUpload() {
         mode="basic"
         :auto="false"
         :custom-upload="true"
-        accept="*/*"
         :max-file-size="maxBytes || undefined"
         :choose-label="selectedFile ? selectedFile.name : 'Выберите файл'"
         choose-icon="pi pi-paperclip"
