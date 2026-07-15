@@ -384,4 +384,177 @@ class MeetingFilesTest extends TestCase
         $this->seeStatusCode(500);
         $this->assertEquals([], Storage::disk('local')->allFiles('meetings/' . $meeting->id));
     }
+
+    public function test_user_can_list_files_of_owned_meeting_sorted_desc_by_created_at(): void
+    {
+        $user = $this->makeUser();
+        $meeting = $this->makeMeeting($user);
+        $this->loginAs($user);
+
+        $old = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'original_name' => 'old.pdf',
+            'stored_name' => '11111111-1111-1111-1111-111111111111.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 10,
+        ]);
+        $old->created_at = '2026-07-15 09:00:00';
+        $old->save();
+
+        $middle = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'original_name' => 'middle.pdf',
+            'stored_name' => '22222222-2222-2222-2222-222222222222.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 20,
+        ]);
+        $middle->created_at = '2026-07-15 10:00:00';
+        $middle->save();
+
+        $new = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'original_name' => 'new.pdf',
+            'stored_name' => '33333333-3333-3333-3333-333333333333.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 30,
+        ]);
+        $new->created_at = '2026-07-15 11:00:00';
+        $new->save();
+
+        $this->get('/api/meetings/' . $meeting->id . '/files', $this->authHeaders());
+
+        $this->seeStatusCode(200);
+        $list = json_decode($this->response->getContent(), true) ?? [];
+        $this->assertCount(3, $list);
+        $this->assertEquals('new.pdf', $list[0]['original_name']);
+        $this->assertEquals('middle.pdf', $list[1]['original_name']);
+        $this->assertEquals('old.pdf', $list[2]['original_name']);
+    }
+
+    public function test_list_files_of_nonexistent_meeting_returns_404(): void
+    {
+        $user = $this->makeUser();
+        $this->loginAs($user);
+
+        $this->get('/api/meetings/999999/files', $this->authHeaders());
+
+        $this->seeStatusCode(404);
+    }
+
+    public function test_list_files_of_other_users_meeting_returns_404(): void
+    {
+        $owner = $this->makeUser('owner@example.com');
+        $meeting = $this->makeMeeting($owner);
+        $intruder = $this->makeUser('intruder@example.com');
+        $this->loginAs($intruder);
+
+        $this->get('/api/meetings/' . $meeting->id . '/files', $this->authHeaders());
+
+        $this->seeStatusCode(404);
+    }
+
+    public function test_uploader_can_delete_file(): void
+    {
+        $user = $this->makeUser();
+        $meeting = $this->makeMeeting($user);
+        $this->loginAs($user);
+
+        $row = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'original_name' => 'note.pdf',
+            'stored_name' => '44444444-4444-4444-4444-444444444444.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 4,
+        ]);
+        Storage::disk('local')->put('meetings/' . $meeting->id . '/' . $row->stored_name, '%PDF-1.4 hello');
+
+        $this->delete('/api/meetings/' . $meeting->id . '/files/' . $row->id, [], $this->authHeaders());
+
+        $this->seeStatusCode(204);
+        $this->assertNull(\App\Models\MeetingFile::find($row->id));
+        $this->assertFileDoesNotExist(
+            Storage::disk('local')->path('meetings/' . $meeting->id . '/' . $row->stored_name)
+        );
+    }
+
+    public function test_non_uploader_cannot_delete_file(): void
+    {
+        $owner = $this->makeUser('owner@example.com');
+        $meeting = $this->makeMeeting($owner);
+        $uploader = $this->makeUser('uploader@example.com');
+        $row = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $uploader->id,
+            'original_name' => 'note.pdf',
+            'stored_name' => '55555555-5555-5555-5555-555555555555.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 4,
+        ]);
+        Storage::disk('local')->put('meetings/' . $meeting->id . '/' . $row->stored_name, '%PDF-1.4 hello');
+
+        $other = $this->makeUser('other@example.com');
+        $this->loginAs($other);
+
+        $this->delete('/api/meetings/' . $meeting->id . '/files/' . $row->id, [], $this->authHeaders());
+
+        $this->assertContains(
+            (int) $this->response->getStatusCode(),
+            [403, 404],
+            'Non-uploader should not be allowed to delete (got ' . $this->response->getStatusCode() . ')'
+        );
+        $this->assertNotNull(\App\Models\MeetingFile::find($row->id));
+    }
+
+    public function test_unauthenticated_list_and_delete_are_rejected(): void
+    {
+        $owner = $this->makeUser();
+        $meeting = $this->makeMeeting($owner);
+        $row = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $owner->id,
+            'original_name' => 'note.pdf',
+            'stored_name' => '66666666-6666-6666-6666-666666666666.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 4,
+        ]);
+
+        $this->get('/api/meetings/' . $meeting->id . '/files');
+        $this->seeStatusCode(401);
+
+        $this->delete('/api/meetings/' . $meeting->id . '/files/' . $row->id);
+        $this->seeStatusCode(401);
+
+        $this->assertNotNull(\App\Models\MeetingFile::find($row->id));
+    }
+
+    public function test_path_traversal_in_original_name_is_sanitized(): void
+    {
+        $user = $this->makeUser();
+        $meeting = $this->makeMeeting($user);
+        $this->loginAs($user);
+
+        $row = \App\Models\MeetingFile::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'original_name' => '..\\..\\windows\\system.pdf',
+            'stored_name' => '77777777-7777-7777-7777-777777777777.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 4,
+        ]);
+        Storage::disk('local')->put('meetings/' . $meeting->id . '/' . $row->stored_name, '%PDF-1.4 hello');
+
+        $this->get('/api/meetings/' . $meeting->id . '/files/' . $row->id, $this->authHeaders());
+
+        $this->seeStatusCode(200);
+        $disposition = $this->response->headers->get('Content-Disposition');
+        $this->assertNotNull($disposition);
+        $this->assertStringNotContainsString('\\', $disposition);
+        $this->assertStringNotContainsString('..', $disposition);
+        $this->assertStringNotContainsString('/', $disposition);
+        $this->assertStringContainsString('system.pdf', $disposition);
+    }
 }

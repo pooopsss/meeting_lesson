@@ -124,6 +124,63 @@ class MeetingFileController extends Controller
         return response()->download($abs, $downloadName ?: 'file-' . $file->id);
     }
 
+    public function index(Request $request, $id)
+    {
+        $meeting = $this->findOwnedMeeting($request, $id);
+        if (! $meeting) {
+            return response()->json(['message' => 'Meeting not found'], 404);
+        }
+
+        $files = MeetingFile::where('meeting_id', $meeting->id)
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json($files);
+    }
+
+    public function destroy(Request $request, $id, $fileId)
+    {
+        $meeting = $this->findOwnedMeeting($request, $id);
+        if (! $meeting) {
+            return response()->json(['message' => 'Meeting not found'], 404);
+        }
+
+        $file = MeetingFile::where('id', $fileId)
+            ->where('meeting_id', $meeting->id)
+            ->first();
+
+        if (! $file) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+
+        if ((int) $file->user_id !== (int) $request->user()->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $disk = Storage::disk('local');
+        $relPath = 'meetings/' . $meeting->id . '/' . $file->stored_name;
+
+        if (str_contains($file->stored_name, '..') || str_contains($file->stored_name, '/')) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+
+        $file->delete();
+
+        if ($disk->exists($relPath)) {
+            $disk->delete($relPath);
+        }
+
+        Log::info('meeting_file: deleted', [
+            'meeting_id' => $meeting->id,
+            'user_id' => $request->user()->id,
+            'file_id' => $file->id,
+            'status' => 'ok',
+        ]);
+
+        return response()->json(null, 204);
+    }
+
     private function findOwnedMeeting(Request $request, $id): ?Meeting
     {
         return Meeting::where('id', $id)

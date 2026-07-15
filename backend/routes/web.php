@@ -21,5 +21,7 @@ $router->group(['middleware' => 'auth'], function () use ($router) {
     $router->get('/api/meetings/{id}', 'MeetingController@show');
 
     $router->post('/api/meetings/{id}/files', 'MeetingFileController@store');
+    $router->get('/api/meetings/{id}/files', 'MeetingFileController@index');
     $router->get('/api/meetings/{id}/files/{fileId}', 'MeetingFileController@download');
+    $router->delete('/api/meetings/{id}/files/{fileId}', 'MeetingFileController@destroy');
 });

@@ -29,3 +29,7 @@ backend/storage/logs/*.log
 # Cache
 backend/storage/framework/cache/*
 backend/storage/framework/views/*
+backend/storage/app/
+backend/storage/framework/
+backend/.phpunit.cache/
+backend/.php-cs-fixer.cache
