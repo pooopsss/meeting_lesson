@@ -4,11 +4,14 @@ import Card from "primevue/card";
 import Tag from "primevue/tag";
 import Message from "primevue/message";
 import ProgressSpinner from "primevue/progressspinner";
+import Button from "primevue/button";
+import MeetingFileList from "./MeetingFileList.vue";
 import { listMeetings } from "../api/meetings.js";
 
 const meetings = ref([]);
 const loading = ref(true);
 const errorMessage = ref("");
+const expandedId = ref(null);
 
 function formatDate(value) {
   if (!value) return "";
@@ -34,6 +37,10 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+function toggleFiles(meetingId) {
+  expandedId.value = expandedId.value === meetingId ? null : meetingId;
 }
 
 onMounted(load);
@@ -69,6 +76,26 @@ onMounted(load);
           <p v-if="meeting.description" class="meeting-desc">
             {{ meeting.description }}
           </p>
+          <div class="meeting-files-toggle">
+            <Button
+              :label="
+                expandedId === meeting.id ? 'Скрыть файлы' : 'Показать файлы'
+              "
+              :icon="
+                expandedId === meeting.id
+                  ? 'pi pi-chevron-up'
+                  : 'pi pi-paperclip'
+              "
+              size="small"
+              severity="secondary"
+              text
+              @click="toggleFiles(meeting.id)"
+            />
+          </div>
+          <MeetingFileList
+            v-if="expandedId === meeting.id"
+            :meeting-id="meeting.id"
+          />
         </template>
       </Card>
     </div>
@@ -114,5 +141,9 @@ onMounted(load);
   margin: 0.75rem 0 0;
   font-size: 0.9rem;
   color: var(--p-text-muted-color, #64748b);
+}
+
+.meeting-files-toggle {
+  margin-top: 0.75rem;
 }
 </style>
