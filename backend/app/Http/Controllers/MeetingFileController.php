@@ -37,6 +37,13 @@ class MeetingFileController extends Controller
         $result = $form->validate();
 
         if (isset($result['errors'])) {
+            Log::warning('meeting_file: validation failed', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $request->user()->id,
+                'errors' => $result['errors']->toArray(),
+                'status' => 'error',
+            ]);
+
             return response()->json(['errors' => $result['errors']], 422);
         }
 
@@ -56,7 +63,9 @@ class MeetingFileController extends Controller
         } catch (Throwable $e) {
             Log::error('meeting_file: storage write failed', [
                 'meeting_id' => $meeting->id,
+                'user_id' => $request->user()->id,
                 'error' => $e->getMessage(),
+                'status' => 'error',
             ]);
 
             return response()->json(['message' => 'Failed to store file'], 500);
@@ -75,12 +84,24 @@ class MeetingFileController extends Controller
         } catch (Throwable $e) {
             Storage::disk('local')->delete($storedRel);
             Log::error('meeting_file: db write failed, file rolled back', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $request->user()->id,
                 'path' => $storedRel,
                 'error' => $e->getMessage(),
+                'status' => 'error',
             ]);
 
             return response()->json(['message' => 'Failed to record file'], 500);
         }
+
+        Log::info('meeting_file: uploaded', [
+            'meeting_id' => $meeting->id,
+            'user_id' => $request->user()->id,
+            'file_id' => $row->id,
+            'size' => $row->size,
+            'mime_type' => $row->mime_type,
+            'status' => 'ok',
+        ]);
 
         return response()->json($row, 201);
     }
@@ -113,10 +134,26 @@ class MeetingFileController extends Controller
         if ($abs === false
             || ! str_starts_with($abs, $diskRoot . DIRECTORY_SEPARATOR)
             || ! is_file($abs)) {
+            Log::warning('meeting_file: download failed (file missing on disk)', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $request->user()->id,
+                'file_id' => $file->id,
+                'stored_name' => $file->stored_name,
+                'status' => 'error',
+            ]);
+
             return response()->json(['message' => 'File not found'], 404);
         }
 
         $downloadName = $this->files->sanitizeOriginalName($file->original_name);
+
+        Log::info('meeting_file: downloaded', [
+            'meeting_id' => $meeting->id,
+            'user_id' => $request->user()->id,
+            'file_id' => $file->id,
+            'size' => $file->size,
+            'status' => 'ok',
+        ]);
 
         return response()->download($abs, $downloadName ?: 'file-' . $file->id);
     }
