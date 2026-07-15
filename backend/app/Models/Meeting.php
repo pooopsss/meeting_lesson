@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Meeting extends Model
 {
@@ -21,5 +22,10 @@ class Meeting extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(MeetingFile::class);
     }
 }

@@ -40,6 +40,10 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/var/www
+    extra_hosts:
+      - "repo.packagist.org:169.150.247.35"
+      - "api.github.com:140.82.121.6"
+      - "codeload.github.com:140.82.121.9"
     networks:
       - app_network
 

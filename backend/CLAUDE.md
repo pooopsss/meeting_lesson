@@ -180,3 +180,8 @@ docker compose exec backend php artisan db:seed
 - **JSON responses**: Always use `response()->json()`, never `return $array`
 - **No resource classes** installed by default — return plain arrays/collections
 - **No form requests** installed by default — validate manually or install `laravel/lumen-framework` form request support
+
+
+## File upload
+
+Use this research for it: @docs/research-meeting-file-upload.md

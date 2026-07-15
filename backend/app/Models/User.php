@@ -24,4 +24,9 @@ class User extends Model implements AuthenticatableContract
     {
         return $this->hasMany(UserSession::class);
     }
+
+    public function uploadedMeetingFiles(): HasMany
+    {
+        return $this->hasMany(MeetingFile::class);
+    }
 }

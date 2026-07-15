@@ -26,6 +26,7 @@ $app->singleton(
 );
 
 $app->configure('database');
+$app->configure('files');
 
 $app->middleware([
     App\Http\Middleware\CorsMiddleware::class,
