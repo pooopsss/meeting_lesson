@@ -33,3 +33,6 @@ backend/storage/app/
 backend/storage/framework/
 backend/.phpunit.cache/
 backend/.php-cs-fixer.cache
+
+# Playwright MCP
+.playwright-mcp/

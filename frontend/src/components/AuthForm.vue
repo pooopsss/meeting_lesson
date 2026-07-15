@@ -34,7 +34,7 @@ function handleError(err) {
   }
   errorMessage.value =
     err.message ||
-    (err.status === 401 ? "Invalid credentials" : "Something went wrong");
+    (err.status === 401 ? "Неверный email или пароль" : "Что-то пошло не так");
 }
 
 async function submitLogin() {

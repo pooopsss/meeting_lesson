@@ -49,9 +49,11 @@ All services share a Docker bridge network `app_network`.
 │   │   ├── Models/            # Eloquent models (User, UserSession, Meeting, MeetingFile)
 │   │   └── Services/          # FileValidator, FileValidationService (finfo)
 │   ├── routes/web.php         # API route definitions
-│   ├── bootstrap/app.php      # Lumen app bootstrap
+│   ├── bootstrap/app.php      # Lumen app bootstrap (registers Translator + loaders for resources/lang)
+│   ├── config/app.php         # app.locale = ru, fallback_locale = ru
 │   ├── config/database.php    # DB connection config
 │   ├── config/files.php       # MIME allow-list + size limits per category
+│   ├── resources/lang/ru/     # Russian validation messages + human-readable attribute names
 │   ├── docker-entrypoint.sh   # Container startup
 │   ├── .dockerignore          # Excludes storage/, vendor/, etc. from build context
 │   └── composer.json
@@ -144,6 +146,7 @@ The `public` schema is configured as default. Migrations run automatically on ba
 - **Lumen does not support `artisan key:generate`** — APP_KEY is generated in `docker-entrypoint.sh` via PHP
 - **Database migrations** — `database/migrations/` contains `create_users_table`, `create_user_sessions_table`, and `create_meetings_table`. Run automatically on backend startup.
 - **Tests** — PHPUnit 10 + Mockery (dev deps). E2e feature tests in `backend/tests/Feature/` (`RegisterTest`, `LoginTest`, `MeetingsTest`, `MeetingFilesTest`, `FileValidationTest`, `LoggingAndInfraTest`). 67 tests, 240 assertions. Run: `docker compose exec backend ./vendor/bin/phpunit` (or `composer test`). Tests use the `DatabaseMigrations` trait against `lumen_db`, so they reset the schema — re-run `php artisan migrate --force` afterwards for the live app.
+- **Russian UI/API** — все пользовательские сообщения и валидация на русском. `app.locale = ru` (`config/app.php`); словари в `backend/resources/lang/ru/validation.php` (правила + секция `attributes` для человекочитаемых имён полей). Контроллеры возвращают русские строки в `message`-полях JSON: `Unauthenticated` → `Требуется авторизация`, `Invalid credentials` → `Неверный email или пароль`, `Meeting not found` → `Встреча не найдена`, `File not found` → `Файл не найден`, `Forbidden` → `Доступ запрещён`. Логи и тесты остаются на английском.
 - **Auto-formatting**: Prettier (frontend, JS/Vue/CSS) + PHP-CS-Fixer (backend, PHP). VS Code format-on-save настроен в `.vscode/settings.json`. Ручной запуск: `npm run format` / `composer format`
 - **Frontend uploads (Phases 6–8)**: `MeetingsList` shows each meeting with «Показать файлы» (`MeetingFileList` with `DataView` rows: icon by MIME, name, size, user_id, date, label, «Скачать» button, «Удалить» visible only to uploader with `ConfirmDialog` + toast) and «Загрузить файл» (`UploadFileDialog` with `FileUpload` + `InputText` + `ProgressBar` + inline validation + toast; XHR upload with progress; uploads via `Authorization: Bearer` and reads `Content-Disposition` for download filename; audio/video preview via blob URL)
 - **README.md**: onboarding, file-upload workflow with category limits, API reference, tests instructions

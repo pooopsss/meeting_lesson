@@ -25,6 +25,7 @@ $app->singleton(
     Laravel\Lumen\Console\Kernel::class
 );
 
+$app->configure('app');
 $app->configure('database');
 $app->configure('files');
 

@@ -235,26 +235,35 @@ onMounted(load);
               <Button
                 v-if="isAudio(file.mime_type) || isVideo(file.mime_type)"
                 :icon="mediaUrls[file.id] ? 'pi pi-eye-slash' : 'pi pi-play'"
-                :label="mediaUrls[file.id] ? 'Скрыть' : 'Превью'"
-                size="small"
+                :title="mediaUrls[file.id] ? 'Скрыть превью' : 'Превью'"
+                :aria-label="mediaUrls[file.id] ? 'Скрыть превью' : 'Превью'"
                 severity="secondary"
+                outlined
+                rounded
+                size="small"
                 :loading="mediaLoading[file.id]"
                 @click="toggleMedia(file)"
               />
               <Button
                 icon="pi pi-download"
-                label="Скачать"
-                size="small"
+                title="Скачать"
+                aria-label="Скачать"
                 severity="secondary"
+                outlined
+                rounded
+                size="small"
                 :loading="downloadingId === file.id"
                 @click="onDownload(file)"
               />
               <Button
                 v-if="currentUserId !== null && currentUserId === file.user_id"
                 icon="pi pi-trash"
-                label="Удалить"
-                size="small"
+                title="Удалить"
+                aria-label="Удалить"
                 severity="danger"
+                outlined
+                rounded
+                size="small"
                 :loading="deletingId === file.id"
                 @click="onDelete(file)"
               />
@@ -266,14 +275,15 @@ onMounted(load);
               controls
               preload="none"
               :src="mediaUrls[file.id]"
-              class="media-element"
+              class="media-element media-element--audio"
             />
             <video
               v-else-if="isVideo(file.mime_type)"
               controls
               preload="metadata"
+              playsinline
               :src="mediaUrls[file.id]"
-              class="media-element"
+              class="media-element media-element--video"
             />
           </div>
         </div>
@@ -393,5 +403,15 @@ onMounted(load);
   width: 100%;
   max-width: 100%;
   display: block;
+}
+
+.media-element--audio {
+  width: 100%;
+}
+
+.media-element--video {
+  max-height: 360px;
+  background: #000;
+  border-radius: 4px;
 }
 </style>

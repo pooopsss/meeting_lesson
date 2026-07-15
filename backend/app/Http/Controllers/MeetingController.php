@@ -25,7 +25,7 @@ class MeetingController extends Controller
             ->first();
 
         if (! $meeting) {
-            return response()->json(['message' => 'Meeting not found'], 404);
+            return response()->json(['message' => 'Встреча не найдена'], 404);
         }
 
         return response()->json($meeting, 200);

@@ -49,7 +49,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->input('email'))->first();
 
         if (! $user || ! Hash::check($request->input('password'), $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return response()->json(['message' => 'Неверный email или пароль'], 401);
         }
 
         $token = UserSession::issueToken($user);

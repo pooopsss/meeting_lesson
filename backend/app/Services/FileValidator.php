@@ -14,7 +14,7 @@ class FileValidator
         $errors = [];
 
         if (! $file || ! $file->isValid()) {
-            $errors['file'][] = 'File upload failed.';
+            $errors['file'][] = 'Не удалось загрузить файл.';
 
             return $errors;
         }
@@ -24,7 +24,7 @@ class FileValidator
         $category = $this->resolveCategory($mime);
 
         if ($category === null) {
-            $errors['file'][] = 'Disallowed file type.';
+            $errors['file'][] = 'Недопустимый тип файла.';
 
             return $errors;
         }
@@ -32,16 +32,16 @@ class FileValidator
         $maxBytes = $category['max_size_mb'] * 1024 * 1024;
         if ($size > $maxBytes) {
             $errors['file'][] = sprintf(
-                'File too large. Max size for this type is %d MB.',
+                'Файл слишком большой. Максимальный размер для этого типа — %d МБ.',
                 $category['max_size_mb']
             );
         }
 
         if ($label !== null) {
             if (! $this->isPrintable($label)) {
-                $errors['label'][] = 'Label contains control characters.';
+                $errors['label'][] = 'Подпись содержит управляющие символы.';
             } elseif (Str::length($label) > self::LABEL_MAX) {
-                $errors['label'][] = sprintf('Label must be at most %d characters.', self::LABEL_MAX);
+                $errors['label'][] = sprintf('Длина подписи не должна превышать %d символов.', self::LABEL_MAX);
             }
         }
 

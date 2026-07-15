@@ -36,7 +36,7 @@ async function load() {
     const data = await listMeetings();
     meetings.value = [...data].sort((a, b) => b.id - a.id).slice(0, 3);
   } catch (err) {
-    errorMessage.value = err.message || "Failed to load meetings";
+    errorMessage.value = err.message || "Не удалось загрузить встречи";
   } finally {
     loading.value = false;
   }
@@ -70,7 +70,7 @@ onMounted(load);
     }}</Message>
 
     <p v-else-if="meetings.length === 0" class="meetings-empty">
-      No meetings yet.
+      Встреч пока нет.
     </p>
 
     <div v-else class="meetings-list">

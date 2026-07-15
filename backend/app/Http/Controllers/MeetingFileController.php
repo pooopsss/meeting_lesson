@@ -30,7 +30,7 @@ class MeetingFileController extends Controller
     {
         $meeting = $this->findOwnedMeeting($request, $id);
         if (! $meeting) {
-            return response()->json(['message' => 'Meeting not found'], 404);
+            return response()->json(['message' => 'Встреча не найдена'], 404);
         }
 
         $form = StoreMeetingFileRequest::make($request, $this->fileValidation);
@@ -68,7 +68,7 @@ class MeetingFileController extends Controller
                 'status' => 'error',
             ]);
 
-            return response()->json(['message' => 'Failed to store file'], 500);
+            return response()->json(['message' => 'Не удалось сохранить файл на диск'], 500);
         }
 
         try {
@@ -91,7 +91,7 @@ class MeetingFileController extends Controller
                 'status' => 'error',
             ]);
 
-            return response()->json(['message' => 'Failed to record file'], 500);
+            return response()->json(['message' => 'Не удалось сохранить информацию о файле'], 500);
         }
 
         Log::info('meeting_file: uploaded', [
@@ -110,7 +110,7 @@ class MeetingFileController extends Controller
     {
         $meeting = $this->findOwnedMeeting($request, $id);
         if (! $meeting) {
-            return response()->json(['message' => 'Meeting not found'], 404);
+            return response()->json(['message' => 'Встреча не найдена'], 404);
         }
 
         $file = MeetingFile::where('id', $fileId)
@@ -118,7 +118,7 @@ class MeetingFileController extends Controller
             ->first();
 
         if (! $file) {
-            return response()->json(['message' => 'File not found'], 404);
+            return response()->json(['message' => 'Файл не найден'], 404);
         }
 
         $disk = Storage::disk('local');
@@ -126,7 +126,7 @@ class MeetingFileController extends Controller
         $relPath = 'meetings/' . $meeting->id . '/' . $file->stored_name;
 
         if ($diskRoot === false || str_contains($file->stored_name, '..') || str_contains($file->stored_name, '/')) {
-            return response()->json(['message' => 'File not found'], 404);
+            return response()->json(['message' => 'Файл не найден'], 404);
         }
 
         $abs = realpath($disk->path($relPath));
@@ -142,7 +142,7 @@ class MeetingFileController extends Controller
                 'status' => 'error',
             ]);
 
-            return response()->json(['message' => 'File not found'], 404);
+            return response()->json(['message' => 'Файл не найден'], 404);
         }
 
         $downloadName = $this->files->sanitizeOriginalName($file->original_name);
@@ -162,7 +162,7 @@ class MeetingFileController extends Controller
     {
         $meeting = $this->findOwnedMeeting($request, $id);
         if (! $meeting) {
-            return response()->json(['message' => 'Meeting not found'], 404);
+            return response()->json(['message' => 'Встреча не найдена'], 404);
         }
 
         $files = MeetingFile::where('meeting_id', $meeting->id)
@@ -177,7 +177,7 @@ class MeetingFileController extends Controller
     {
         $meeting = $this->findOwnedMeeting($request, $id);
         if (! $meeting) {
-            return response()->json(['message' => 'Meeting not found'], 404);
+            return response()->json(['message' => 'Встреча не найдена'], 404);
         }
 
         $file = MeetingFile::where('id', $fileId)
@@ -185,18 +185,18 @@ class MeetingFileController extends Controller
             ->first();
 
         if (! $file) {
-            return response()->json(['message' => 'File not found'], 404);
+            return response()->json(['message' => 'Файл не найден'], 404);
         }
 
         if ((int) $file->user_id !== (int) $request->user()->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
+            return response()->json(['message' => 'Доступ запрещён'], 403);
         }
 
         $disk = Storage::disk('local');
         $relPath = 'meetings/' . $meeting->id . '/' . $file->stored_name;
 
         if (str_contains($file->stored_name, '..') || str_contains($file->stored_name, '/')) {
-            return response()->json(['message' => 'File not found'], 404);
+            return response()->json(['message' => 'Файл не найден'], 404);
         }
 
         $file->delete();

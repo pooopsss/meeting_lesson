@@ -15,7 +15,7 @@ class Authenticate
         $token = $request->bearerToken();
 
         if (! $token) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            return response()->json(['message' => 'Требуется авторизация'], 401);
         }
 
         $user = null;
@@ -28,7 +28,7 @@ class Authenticate
         }
 
         if (! $user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            return response()->json(['message' => 'Требуется авторизация'], 401);
         }
 
         $request->setUserResolver(fn () => $user);
