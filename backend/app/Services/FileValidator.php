@@ -50,9 +50,11 @@ class FileValidator
 
     public function sanitizeOriginalName(string $name): string
     {
+        $name = str_replace('\\', '/', $name);
         $name = basename($name);
         $name = preg_replace('/[\x00-\x1F\x7F]/u', '', $name) ?? '';
         $name = preg_replace('/[\r\n"]/u', '', $name) ?? '';
+        $name = str_replace('..', '', $name);
         if (Str::length($name) > 255) {
             $name = Str::limit($name, 255, '');
         }
