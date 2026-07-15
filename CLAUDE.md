@@ -121,6 +121,7 @@ The `public` schema is configured as default. Migrations run automatically on ba
 - **Auth implemented** — `POST /api/register` and `POST /api/login` (see `AuthController`). Login/register validate email+password and return a plaintext auth token; the token hash is stored in `user_sessions`.
 - **Auth middleware** — `App\Http\Middleware\Authenticate` registered as route middleware `auth` in `bootstrap/app.php`. Reads the `Authorization: Bearer <token>` header, matches the hash against `user_sessions`, and sets the request user. Returns `401` when the token is missing/invalid.
 - **Meetings module** — protected by `auth` middleware (see `MeetingController`): `POST /api/meetings` (create, validates `title` + `scheduled_at`), `GET /api/meetings` (list current user's meetings), `GET /api/meetings/{id}` (single meeting, `404` if absent). Users only see their own meetings.
+- **Meeting files module (Phase 1)** — protected by `auth` middleware (see `MeetingFileController`): `POST /api/meetings/{id}/files` (upload, `multipart file`, MIME via Symfony `UploadedFile::getMimeType()` / finfo, file saved as `UUID.ext` in `storage/app/meetings/{id}/`, `201` + model JSON) and `GET /api/meetings/{id}/files/{fileId}` (download as `BinaryFileResponse` with `Content-Disposition: attachment`, `404` for non-owned meetings). Path-traversal guard via `is_file()` on resolved path. Limits/MIME allow-list live in `backend/config/files.php` (categories: document/image/text/archive=20MБ, audio/video=200MБ) — wired in `bootstrap/app.php` via `$app->configure('files')`.
 - **Eloquent is enabled** — models in `app/Models/` (`User`, `UserSession`, `Meeting`)
 - **Facades are enabled** — `DB::`, `Log::`, etc. are available
 - **Lumen does not support `artisan key:generate`** — APP_KEY is generated in `docker-entrypoint.sh` via PHP
@@ -136,3 +137,31 @@ The `public` schema is configured as default. Migrations run automatically on ba
 - Обновить таблицу Services & Ports
 - Обновить блок Environment Variables
 - Обновить раздел Key Facts при добавлении/удалении зависимостей или изменении поведения
+
+
+## ВАЖНО: Соглашение о коммитах
+
+Все коммиты **обязательно** должны следовать [Conventional Commits](https://www.conventionalcommits.org/ru/v1.0.0/).
+
+Формат: `<тип>[область]: <описание>`
+
+Основные типы: `feat`, `fix`, `docs`, `style`, `refactor`, `build`.
+
+Примеры:
+```
+feat(api): добавить эндпоинт создания заявки
+fix(crm): исправить отображение списка клиентов
+refactor(api): вынести логику авторизации в отдельный класс
+```
+
+**Описание — что уже сделано, а не что нужно сделать.** Использовать свершившийся или пассивный залог:
+- `добавлено` ✓, ~~добавить~~ ✗
+- `перенесён` ✓, ~~перенести~~ ✗
+- `исправлено` ✓, ~~исправить~~ ✗
+- `убран` ✓, ~~убрать~~ ✗
+
+## ВАЖНО: Пуш — только с согласия
+
+**Никогда не пушить изменения в удалённый репозиторий без явного разрешения пользователя.** Коммиты создаются автоматически, но `git push` — только после слов «запушь», «отправь», «push» и т.п.
+
+---

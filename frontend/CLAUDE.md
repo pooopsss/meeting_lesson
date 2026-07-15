@@ -87,3 +87,7 @@ Since there's no Vue Router:
 If shared state is needed:
 - Use Vue 3 `reactive()` / `ref()` with provide/inject for simple cases
 - Or install Pinia (`npm install pinia`) for proper stores
+
+## File upload
+
+Use this research for it: @docs/research-meeting-file-upload.md
