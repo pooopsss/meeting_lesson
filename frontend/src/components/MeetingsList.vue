@@ -6,12 +6,15 @@ import Message from "primevue/message";
 import ProgressSpinner from "primevue/progressspinner";
 import Button from "primevue/button";
 import MeetingFileList from "./MeetingFileList.vue";
+import UploadFileDialog from "./UploadFileDialog.vue";
 import { listMeetings } from "../api/meetings.js";
 
 const meetings = ref([]);
 const loading = ref(true);
 const errorMessage = ref("");
 const expandedId = ref(null);
+const uploadMeetingId = ref(null);
+const fileListKey = ref(0);
 
 function formatDate(value) {
   if (!value) return "";
@@ -41,6 +44,14 @@ async function load() {
 
 function toggleFiles(meetingId) {
   expandedId.value = expandedId.value === meetingId ? null : meetingId;
+}
+
+function openUpload(meetingId) {
+  uploadMeetingId.value = meetingId;
+}
+
+function onUploaded() {
+  fileListKey.value += 1;
 }
 
 onMounted(load);
@@ -76,7 +87,7 @@ onMounted(load);
           <p v-if="meeting.description" class="meeting-desc">
             {{ meeting.description }}
           </p>
-          <div class="meeting-files-toggle">
+          <div class="meeting-actions">
             <Button
               :label="
                 expandedId === meeting.id ? 'Скрыть файлы' : 'Показать файлы'
@@ -91,14 +102,34 @@ onMounted(load);
               text
               @click="toggleFiles(meeting.id)"
             />
+            <Button
+              label="Загрузить файл"
+              icon="pi pi-upload"
+              size="small"
+              severity="primary"
+              @click="openUpload(meeting.id)"
+            />
           </div>
           <MeetingFileList
             v-if="expandedId === meeting.id"
+            :key="`${meeting.id}-${fileListKey}`"
             :meeting-id="meeting.id"
           />
         </template>
       </Card>
     </div>
+
+    <UploadFileDialog
+      v-if="uploadMeetingId != null"
+      :visible="uploadMeetingId != null"
+      :meeting-id="uploadMeetingId"
+      @update:visible="
+        (v) => {
+          if (!v) uploadMeetingId = null;
+        }
+      "
+      @uploaded="onUploaded"
+    />
   </div>
 </template>
 
@@ -143,7 +174,10 @@ onMounted(load);
   color: var(--p-text-muted-color, #64748b);
 }
 
-.meeting-files-toggle {
+.meeting-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   margin-top: 0.75rem;
 }
 </style>
