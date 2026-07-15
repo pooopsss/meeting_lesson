@@ -1,4 +1,4 @@
-import { auth } from "../store/auth.js";
+import { auth, clearSession } from "../store/auth.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8081/api";
 
@@ -13,6 +13,10 @@ async function request(path, options = {}) {
   });
 
   const data = await response.json().catch(() => ({}));
+
+  if (response.status === 401) {
+    clearSession();
+  }
 
   if (!response.ok) {
     throw {
