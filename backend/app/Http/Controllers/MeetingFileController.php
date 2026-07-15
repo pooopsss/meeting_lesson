@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreMeetingFileRequest;
 use App\Models\Meeting;
 use App\Models\MeetingFile;
+use App\Services\FileValidationService;
 use App\Services\FileValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -17,9 +18,12 @@ class MeetingFileController extends Controller
 {
     private FileValidator $files;
 
+    private FileValidationService $fileValidation;
+
     public function __construct()
     {
         $this->files = app(FileValidator::class);
+        $this->fileValidation = app(FileValidationService::class);
     }
 
     public function store(Request $request, $id): JsonResponse
@@ -29,22 +33,15 @@ class MeetingFileController extends Controller
             return response()->json(['message' => 'Meeting not found'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|file',
-            'label' => 'nullable|string|max:' . FileValidator::LABEL_MAX,
-        ]);
+        $form = StoreMeetingFileRequest::make($request, $this->fileValidation);
+        $result = $form->validate();
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        if (isset($result['errors'])) {
+            return response()->json(['errors' => $result['errors']], 422);
         }
 
-        $uploaded = $request->file('file');
-        $label = $request->input('label');
-
-        $errors = $this->files->validate($uploaded, $label);
-        if (! empty($errors)) {
-            return response()->json(['errors' => $errors], 422);
-        }
+        $uploaded = $result['file'];
+        $label = $result['label'];
 
         $ext = $this->files->safeExtension($uploaded);
         $storedName = Str::uuid()->toString() . '.' . $ext;
@@ -71,7 +68,7 @@ class MeetingFileController extends Controller
                 'user_id' => $request->user()->id,
                 'original_name' => $originalName,
                 'stored_name' => $storedName,
-                'mime_type' => $uploaded->getMimeType(),
+                'mime_type' => $this->fileValidation->detectMime($uploaded),
                 'size' => $uploaded->getSize(),
                 'label' => $label,
             ]);

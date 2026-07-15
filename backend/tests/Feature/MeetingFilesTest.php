@@ -61,6 +61,25 @@ class MeetingFilesTest extends TestCase
         return new UploadedFile($tmp, $name, $mime, null, true);
     }
 
+    protected function makeFakeAudio(string $name, int $sizeInKb, string $mime = 'audio/mpeg'): UploadedFile
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'mftest');
+        $targetBytes = $sizeInKb * 1024;
+        $frame = "\xFF\xFB\x90\x00";
+        $frameLen = strlen($frame);
+        $fh = fopen($tmp, 'wb');
+        $written = 0;
+        $chunk = str_repeat($frame, 4096);
+        while ($written < $targetBytes) {
+            $remaining = $targetBytes - $written;
+            fwrite($fh, $remaining >= strlen($chunk) ? $chunk : substr($chunk, 0, $remaining));
+            $written += min($remaining, strlen($chunk));
+        }
+        fclose($fh);
+
+        return new UploadedFile($tmp, $name, $mime, null, true);
+    }
+
     protected function postWithFile(string $uri, array $data, array $headers = []): void
     {
         $files = [];
@@ -288,7 +307,7 @@ class MeetingFilesTest extends TestCase
 
         $this->upload(
             $meeting->id,
-            UploadedFile::fake()->create('big.mp3', 21 * 1024, 'audio/mpeg')
+            $this->makeFakeAudio('big.mp3', 21 * 1024)
         );
 
         $this->seeStatusCode(201);
@@ -302,7 +321,7 @@ class MeetingFilesTest extends TestCase
 
         $this->upload(
             $meeting->id,
-            UploadedFile::fake()->create('huge.mp3', 201 * 1024, 'audio/mpeg')
+            $this->makeFakeAudio('huge.mp3', 201 * 1024)
         );
 
         $this->seeStatusCode(422);
