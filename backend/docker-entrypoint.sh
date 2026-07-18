@@ -15,6 +15,8 @@ fi
 php artisan migrate --force 2>/dev/null || true
 
 mkdir -p /var/www/storage/app/avatars
+chown -R www-data:www-data /var/www/storage/app/avatars
+chmod -R ug+rwX /var/www/storage/app/avatars
 
 chown -R www-data:www-data /var/www/storage
 chmod -R ug+rwX /var/www/storage
