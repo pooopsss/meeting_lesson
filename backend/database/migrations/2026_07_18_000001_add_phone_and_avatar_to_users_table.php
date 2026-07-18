@@ -8,8 +8,8 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('phone', 20)->nullable()->after('email');
-            $table->string('avatar_path')->nullable()->after('phone');
+            $table->string('phone', 20)->nullable();
+            $table->string('avatar_path')->nullable();
         });
     }
 
