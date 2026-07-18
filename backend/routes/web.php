@@ -16,6 +16,15 @@ $router->post('/api/register', 'AuthController@register');
 $router->post('/api/login', 'AuthController@login');
 
 $router->group(['middleware' => 'auth'], function () use ($router) {
+    $router->post('/api/logout', 'AuthController@logout');
+
+    $router->get('/api/me', 'UserController@me');
+    $router->patch('/api/me', 'UserController@update');
+    $router->post('/api/me/avatar', 'UserController@uploadAvatar');
+    $router->get('/api/me/avatar', 'UserController@showAvatar');
+    $router->delete('/api/me/avatar', 'UserController@deleteAvatar');
+    $router->post('/api/me/password', 'UserController@changePassword');
+
     $router->get('/api/meetings', 'MeetingController@index');
     $router->post('/api/meetings', 'MeetingController@store');
     $router->get('/api/meetings/{id}', 'MeetingController@show');

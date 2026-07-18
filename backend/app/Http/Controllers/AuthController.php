@@ -59,4 +59,21 @@ class AuthController extends Controller
             'user' => $user,
         ], 200);
     }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $token = (string) $request->bearerToken();
+        $userId = (int) $request->user()->id;
+
+        if ($token !== '') {
+            foreach (UserSession::all() as $session) {
+                if ((int) $session->user_id === $userId && Hash::check($token, $session->token)) {
+                    $session->delete();
+                    break;
+                }
+            }
+        }
+
+        return response()->json(null, 204);
+    }
 }
