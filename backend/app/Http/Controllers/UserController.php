@@ -35,9 +35,6 @@ class UserController extends Controller
                 'max:20',
                 'regex:/^[0-9+\s()\-]+$/',
             ],
-        ], [], [
-            'name' => 'имя',
-            'phone' => 'телефон',
         ]);
 
         if ($validator->fails()) {

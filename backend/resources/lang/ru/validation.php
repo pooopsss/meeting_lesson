@@ -83,6 +83,7 @@ return [
         'file' => 'файл',
         'label' => 'подпись',
         'name' => 'имя',
+        'phone' => 'телефон',
         'current_password' => 'текущий пароль',
         'new_password' => 'новый пароль',
     ],
