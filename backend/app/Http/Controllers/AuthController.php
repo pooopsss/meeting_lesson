@@ -66,8 +66,8 @@ class AuthController extends Controller
         $userId = (int) $request->user()->id;
 
         if ($token !== '') {
-            foreach (UserSession::all() as $session) {
-                if ((int) $session->user_id === $userId && Hash::check($token, $session->token)) {
+            foreach (UserSession::where('user_id', $userId)->get() as $session) {
+                if (Hash::check($token, $session->token)) {
                     $session->delete();
                     break;
                 }
