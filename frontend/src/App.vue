@@ -1,11 +1,65 @@
 <script setup>
+import { onMounted, ref, watch } from "vue";
 import Card from "primevue/card";
-import Button from "primevue/button";
 import Toast from "primevue/toast";
 import ConfirmDialog from "primevue/confirmdialog";
+import { useConfirm } from "primevue/useconfirm";
 import AuthForm from "./components/AuthForm.vue";
 import MeetingsList from "./components/MeetingsList.vue";
-import { auth, clearSession, isAuthenticated } from "./store/auth.js";
+import UserMenu from "./components/UserMenu.vue";
+import ProfileView from "./components/ProfileView.vue";
+import {
+  auth,
+  isAuthenticated,
+  logout as authLogout,
+  refreshMe,
+} from "./store/auth.js";
+
+const view = ref("dashboard");
+const profileVisible = ref(false);
+const confirm = useConfirm();
+
+function openProfile() {
+  view.value = "profile";
+  profileVisible.value = true;
+}
+
+function closeProfile() {
+  profileVisible.value = false;
+  if (view.value === "profile") view.value = "dashboard";
+}
+
+function askLogout() {
+  confirm.require({
+    message: "Выйти из аккаунта?",
+    header: "Подтверждение",
+    icon: "pi pi-sign-out",
+    acceptLabel: "Выйти",
+    rejectLabel: "Отмена",
+    acceptProps: { severity: "danger" },
+    accept: async () => {
+      await authLogout();
+      view.value = "dashboard";
+      profileVisible.value = false;
+    },
+  });
+}
+
+watch(
+  () => isAuthenticated(),
+  (authed) => {
+    if (!authed) {
+      view.value = "dashboard";
+      profileVisible.value = false;
+    }
+  },
+);
+
+onMounted(() => {
+  if (isAuthenticated()) {
+    refreshMe();
+  }
+});
 </script>
 
 <template>
@@ -21,19 +75,19 @@ import { auth, clearSession, isAuthenticated } from "./store/auth.js";
             <i class="pi pi-user"></i>
             {{ auth.user?.email }}
           </span>
-          <Button
-            label="Log out"
-            icon="pi pi-sign-out"
-            severity="secondary"
-            size="small"
-            @click="clearSession"
-          />
+          <UserMenu @open-profile="openProfile" @logout="askLogout" />
         </div>
       </template>
       <template #content>
-        <MeetingsList />
+        <MeetingsList v-if="view === 'dashboard'" />
       </template>
     </Card>
+
+    <ProfileView
+      v-if="isAuthenticated()"
+      :visible="profileVisible"
+      @update:visible="(v) => v || closeProfile()"
+    />
   </div>
 </template>
 
