@@ -170,11 +170,17 @@ class UserController extends Controller
             default => 'application/octet-stream',
         };
 
-        return response()->file($abs, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="avatar.' . $ext . '"',
-            'Cache-Control' => 'private, max-age=300',
-        ]);
+        $response = new \Symfony\Component\HttpFoundation\BinaryFileResponse(
+            $abs,
+            200,
+            [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="avatar.' . $ext . '"',
+            ]
+        );
+        $response->headers->set('Cache-Control', 'private, max-age=300');
+
+        return $response;
     }
 
     public function changePassword(Request $request): JsonResponse
