@@ -21,6 +21,35 @@ docker compose down             # остановить
 docker compose logs -f backend  # логи бэкенда
 ```
 
+## Профиль и аватарка
+
+В правом верхнем углу — `UserMenu` с аватаром (PrimeVue `Avatar`): PrimeVue `Avatar` показывает изображение, если оно загружено, либо **инициалы** на детерминированном цвете (вычисляется по `user_id` на бэкенде, фронт ничего не угадывает). Клик открывает меню с двумя пунктами:
+
+- **«Профиль»** — открывает `ProfileView` (PrimeVue `Dialog` с тремя секциями: «Основное», «Аватарка», «Безопасность»). Каждая секция сохраняется отдельно через свой API с тостом об успехе/ошибке.
+- **«Выйти»** — `ConfirmDialog` с подтверждением; при «Да» — `POST /api/logout`, очистка токена в `localStorage`, редирект на форму логина. При 401 от API (токен уже истёк) — локальное состояние всё равно чистится, без всплывающей ошибки.
+
+### Аватарка
+
+**Загрузка:** «Профиль» → вкладка «Аватарка» → PrimeVue `FileUpload` (`mode: basic`, `auto: true`, `customUpload: true`). Клиентская валидация до отправки:
+
+- MIME ∈ `{image/jpeg, image/png, image/webp}` (определяется через сигнатуру, не по расширению)
+- Размер ≤ 2 МБ
+
+Допустимые форматы — JPEG, PNG, WebP. Лимит — 2 МБ.
+
+После успешной загрузки сервер:
+
+1. Проверяет MIME через `finfo` (поверхностная проверка по `Content-Type` не пройдёт).
+2. Проверяет размер ≤ 2 МБ.
+3. **Ресайзит** изображение в 400×400 (фит по большей стороне, пропорции сохраняются).
+4. Удаляет предыдущую аватарку с диска (если была).
+5. Сохраняет как `storage/app/avatars/{user_id}.{ext}`.
+6. Пишет `Log::info` (`user_id`, `avatar_path`, `status=ok`) или `Log::warning` (`status=error`) при ошибке.
+
+**Удаление:** кнопка «Удалить» → `ConfirmDialog` → `DELETE /api/me/avatar` → файл удаляется с диска, `avatar_path` обнуляется. Идемпотентно: повторный DELETE при уже удалённой аватарке возвращает 200, не 404.
+
+**Отдача:** `GET /api/me/avatar` под `auth` отдаёт `BinaryFileResponse` с `Content-Type: image/{jpeg|png|webp}` и `Content-Disposition: inline`. Nginx `location /storage/` остаётся `deny all` — прямой доступ к файлу невозможен, отдача только через PHP (с проверкой прав).
+
 ## Как прикрепить файл
 
 В деталях встречи нажмите **«Загрузить файл»** → откроется диалог с PrimeVue `FileUpload` и полем подписи.
@@ -60,8 +89,15 @@ docker compose logs -f backend  # логи бэкенда
 
 | Метод | Path | Auth | Описание |
 |---|---|:---:|---|
-| POST | `/api/register` | — | email + password (+ confirmation) → token |
-| POST | `/api/login` | — | email + password → token |
+| POST | `/api/register` | — | email + password (+ confirmation) → token + профиль |
+| POST | `/api/login` | — | email + password → token + профиль |
+| GET | `/api/me` | ✓ | профиль текущего пользователя (id, name, email, phone, avatar_url, initials, color) |
+| PATCH | `/api/me` | ✓ | редактировать `name` (обязательно, ≤ 255) и/или `phone` (опц., ≤ 20, `0-9 +()\-`) |
+| POST | `/api/me/avatar` | ✓ | загрузить аватарку (multipart `avatar`, JPEG/PNG/WebP, ≤ 2 МБ, ресайз 400×400) |
+| GET | `/api/me/avatar` | ✓ | отдача аватарки (`Content-Type: image/*`, `Content-Disposition: inline`) |
+| DELETE | `/api/me/avatar` | ✓ | удалить аватарку (идемпотентно, 200) |
+| POST | `/api/me/password` | ✓ | сменить пароль (`current_password` + `new_password` + `new_password_confirmation`; `new_password` ≥ 8) |
+| POST | `/api/logout` | ✓ | инвалидировать текущий токен (204, запись в `user_sessions` удалена) |
 | POST | `/api/meetings` | ✓ | создать встречу (title + scheduled_at) |
 | GET | `/api/meetings` | ✓ | список встреч текущего пользователя |
 | GET | `/api/meetings/{id}` | ✓ | одна встреча (404 если не владелец) |
@@ -69,6 +105,33 @@ docker compose logs -f backend  # логи бэкенда
 | GET | `/api/meetings/{id}/files` | ✓ | список файлов встречи (DESC по created_at) |
 | GET | `/api/meetings/{id}/files/{fileId}` | ✓ | скачать (Content-Disposition, original_name) |
 | DELETE | `/api/meetings/{id}/files/{fileId}` | ✓ | удалить (только загрузившему) |
+
+### Примеры ответов профиля
+
+```json
+// 200 — GET /api/me
+{
+  "id": 1,
+  "name": "Иван Петров",
+  "email": "ivan@example.com",
+  "phone": "+7 999 123-45-67",
+  "avatar_url": "/api/me/avatar",
+  "initials": "ИП",
+  "color": "#3FA6C9"
+}
+
+// 200 — после загрузки аватарки
+{
+  "id": 1, "name": "...", "email": "...",
+  "avatar_path": "avatars/1.jpg",
+  "avatar_url": "/api/me/avatar",
+  "initials": "...", "color": "..."
+}
+
+// 204 — POST /api/logout (пустое тело)
+```
+
+`initials` — `mb_substr` первых букв первых двух слов `name`, в верхнем регистре. `color` — детерминированный HSL-конверт в hex, стабильный между сессиями и перезагрузками (вычисляется на бэкенде от `user_id`).
 
 Все защищённые эндпоинты требуют `Authorization: Bearer <token>`. На 401 клиент автоматически сбрасывает сессию и редиректит на логин.
 
@@ -81,12 +144,23 @@ docker compose logs -f backend  # логи бэкенда
 // 401 — неверный логин/пароль
 { "message": "Неверный email или пароль" }
 
-// 404 — встреча/файл не найдены
+// 404 — встреча/файл/аватарка не найдены
 { "message": "Встреча не найдена" }
 { "message": "Файл не найден" }
+{ "message": "Аватарка не найдена" }
 
 // 403 — попытка удалить чужой файл
 { "message": "Доступ запрещён" }
+
+// 422 — смена пароля: неверный текущий
+{ "errors": { "current_password": ["Неверный текущий пароль"] } }
+
+// 422 — аватарка: недопустимый формат / превышен размер
+{ "errors": { "avatar": ["Недопустимый формат изображения. Разрешены JPG, PNG, WebP."] } }
+{ "errors": { "avatar": ["Файл слишком большой. Максимальный размер — 2 МБ."] } }
+
+// 200 — смена пароля
+{ "message": "Пароль изменён" }
 
 // 422 — ошибки валидации (русские ключи + :attribute → человекочитаемое имя)
 { "errors": {
@@ -106,11 +180,22 @@ docker compose exec backend composer install --dev
 docker compose exec backend ./vendor/bin/phpunit
 ```
 
-Покрытие (67 тестов, 240+ assertions):
-- `tests/Feature/MeetingFilesTest.php` — upload, download, list, delete, MIME/size, sanitization, path-traversal, rollback (25)
+Покрытие (129 тестов, 416 ассертов):
+- `tests/Feature/RegisterTest.php` — регистрация, токен, сессия, валидации (9)
+- `tests/Feature/LoginTest.php` — вход, токен, сессия, валидации (7)
+- `tests/Feature/LogoutTest.php` — инвалидация токена, 401 без токена, изоляция (4)
+- `tests/Feature/MeetingsTest.php` — создание, список, 404, изоляция (12)
+- `tests/Feature/MeetingFilesTest.php` — upload, download, list, delete, MIME/size, sanitization, path-traversal, rollback (24)
 - `tests/Feature/FileValidationTest.php` — 8 кейсов валидации из Phase 3 (8)
 - `tests/Feature/LoggingAndInfraTest.php` — логирование, Nginx, restart-volume (6)
-- `tests/Feature/{Register,Login,Meetings}Test.php` — auth и встречи (28)
+- `tests/Feature/MeTest.php` — GET /api/me, профиль, initials/color, hidden password (5)
+- `tests/Feature/MeUpdateTest.php` — PATCH /api/me, валидации, email игнорируется (10)
+- `tests/Feature/AvatarTest.php` — JPEG/PNG/WebP, MIME через finfo, лимит 2 МБ, ресайз 400×400, замена файла (9)
+- `tests/Feature/AvatarDeleteTest.php` — DELETE, идемпотентность, изоляция пользователей (5)
+- `tests/Feature/ShowAvatarTest.php` — GET /api/me/avatar, Content-Type, inline, 401/404 (7)
+- `tests/Feature/ChangePasswordTest.php` — успех, неверный current, валидации, изоляция сессий (8)
+- `tests/Feature/UserModelTest.php` — fillable, appends, initials, color (детерминизм) (12)
+- `tests/Feature/UserProfileFieldsMigrationTest.php` — колонки phone/avatar_path (2)
 
 После прогона `DatabaseMigrations` сбрасывает схему — восстановите live-БД:
 
