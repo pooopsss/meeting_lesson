@@ -2,7 +2,12 @@ FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
     postgresql-dev \
-    && docker-php-ext-install pdo pdo_pgsql
+    libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    zlib-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install pdo pdo_pgsql gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
